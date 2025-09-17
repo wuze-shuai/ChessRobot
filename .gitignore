@@ -1,0 +1,10 @@
+.idea/
+__pycache__/
+*.pyc
+yolov5/runs/
+*.jpg
+*.png
+*.rar
+data/
+logs/
+images/
