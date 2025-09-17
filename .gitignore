@@ -8,3 +8,4 @@ yolov5/runs/
 data/
 logs/
 images/
+tools/API_key.py
