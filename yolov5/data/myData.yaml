@@ -1,0 +1,8 @@
+path: E:\13project\yolov5-master\data\dataset
+train: images/train
+val: images/val
+test: # optional
+names:
+  0: white
+  1: black
+nc: 2

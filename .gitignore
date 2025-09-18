@@ -5,7 +5,7 @@ yolov5/runs/
 *.jpg
 *.png
 *.rar
-data/
+#data/
 logs/
 images/
 tools/API_key.py
