@@ -86,7 +86,7 @@ class CameraGUI(QMainWindow):
                 if not os.path.exists(output_dir):
                     os.makedirs(output_dir)
 
-                self.cap = cv2.VideoCapture(1,cv2.CAP_DSHOW)
+                self.cap = cv2.VideoCapture(0)
                 if not self.cap.isOpened():
                     self.status_text.append("错误：无法打开摄像头")
                     return
@@ -138,9 +138,12 @@ class CameraGUI(QMainWindow):
             cv2.imwrite(filename, focus_image)
 
             # 更新图像显示
-            rgb_image = cv2.cvtColor(focus_image, cv2.COLOR_BGR2RGB)
+            # rgb_image = cv2.cvtColor(focus_image, cv2.COLOR_BGR2RGB)
             try:
-                rgb_image = focus_image.astype(np.uint8)
+                if get_data_mode:
+                    rgb_image = focus_image.astype(np.uint8)
+                else:
+                    rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             except Exception as e:
                 print(f"未读取到完整棋盘: {e}")
                 
