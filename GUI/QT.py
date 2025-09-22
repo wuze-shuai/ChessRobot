@@ -1,376 +1,307 @@
-# -*- coding: utf-8 -*-
-# QT.py (optimized with data collection module from camera_data_qt.py)
-# This version integrates the data collection module by importing camera_data_qt.py.
-
-import sys
-import json
-import time
-import socket
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                             QListWidget, QStackedWidget, QLabel, QPushButton, QComboBox,
-                             QLineEdit, QTextEdit, QFrame, QGridLayout, QTabWidget, QProgressBar)
-from PyQt5.QtGui import QPainter, QPen, QBrush, QColor, QFont, QPixmap
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSize
-
 import sys
 import os
-# 将dir2的路径添加到sys.path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-# Import qt_main.py as a module
-import qt_main
-import camera_data_qt
+import time
+import socket
+import json
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QTabWidget,
+                             QListWidget, QPushButton, QHBoxLayout, QLineEdit, QComboBox, QMessageBox, QFileDialog)
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QFont
 
-# UDP settings from qt_main.py
-YOLO_UDP_IP = qt_main.YOLO_UDP_IP
-YOLO_UDP_PORT = qt_main.YOLO_UDP_PORT
+import camera_data
+from qt_YOLO import GobangBoard as YoloGobangBoard  # 导入 YOLO 的 GobangBoard，添加别名以区分
+from game_analysis import (YoloDetecter, FocusFinder, yolo_to_pixel, coordinate_mapping, coordinate_to_pos,
+                           initialize_board, send_yolo_result, parase_response, WIDTH_GOBANG, LENGTH_GOBANG,
+                           WIDTH_ERR_GOBANG, LENGTH_ERR_GOBANG, ROW_GOBANG, COLUMN_GOBANG,
+                           YOLO_UDP_IP, YOLO_UDP_PORT)
+import cv2
+import asyncio
 
-# Chessboard settings (15x15 Gobang)
-BOARD_SIZE = 15
-GRID_SIZE = 40
-BOARD_WIDTH = BOARD_SIZE * GRID_SIZE
-BOARD_HEIGHT = BOARD_SIZE * GRID_SIZE
-MARGIN = 20
+# 导入 robot_arm.py 中的 GobangBoard 和 MainWindow
+from robot_arm import GobangBoard as ArmGobangBoard, MainWindow as ArmMainWindow
 
-class UDPListenerThread(QThread):
-    data_received = pyqtSignal(dict)
+# 导入 annotation_qt.py 中的 AutoAnnotationGUI
+from annotation_qt import AutoAnnotationGUI
 
+class DataCollectionPage(camera_data.CameraGUI):
     def __init__(self):
         super().__init__()
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((YOLO_UDP_IP, YOLO_UDP_PORT))
-        self.running = True
-
-    def run(self):
-        while self.running:
-            try:
-                data, addr = self.sock.recvfrom(4096)
-                yolo_data = json.loads(data.decode('utf-8'))
-                self.data_received.emit(yolo_data)
-            except Exception as e:
-                print(f"UDP receive error: {e}")
-
-    def stop(self):
-        self.running = False
-        self.sock.close()
-
-class ChessBoardWidget(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setFixedSize(BOARD_WIDTH + 2 * MARGIN, BOARD_HEIGHT + 2 * MARGIN)
-        self.black_pieces = {}
-        self.white_pieces = {}
-        self.black_conf = []
-        self.white_conf = []
-
-    def update_pieces(self, yolo_data):
-        self.black_pieces.clear()
-        self.white_pieces.clear()
-        for pos in yolo_data.get('black_pieces', []):
-            x, y = pos
-            conf = next((c for px, py, c in yolo_data.get('black_conf', []) if px == x and py == y), 1.0)
-            self.black_pieces[(int(x), int(y))] = conf
-        for pos in yolo_data.get('white_pieces', []):
-            x, y = pos
-            conf = next((c for px, py, c in yolo_data.get('white_conf', []) if px == x and py == y), 1.0)
-            self.white_pieces[(int(x), int(y))] = conf
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.fillRect(self.rect(), QColor(245, 222, 179))  # Light wood color for board
-
-        # Draw grid
-        pen = QPen(QColor(139, 69, 19), 2)
-        painter.setPen(pen)
-        for i in range(BOARD_SIZE + 1):
-            painter.drawLine(MARGIN, MARGIN + i * GRID_SIZE, MARGIN + BOARD_WIDTH, MARGIN + i * GRID_SIZE)
-            painter.drawLine(MARGIN + i * GRID_SIZE, MARGIN, MARGIN + i * GRID_SIZE, MARGIN + BOARD_HEIGHT)
-
-        # Draw pieces
-        for (x, y), conf in self.black_pieces.items():
-            cx = MARGIN + x * GRID_SIZE + GRID_SIZE // 2
-            cy = MARGIN + y * GRID_SIZE + GRID_SIZE // 2
-            painter.setBrush(QBrush(QColor(0, 0, 0)))
-            painter.drawEllipse(cx - GRID_SIZE // 3, cy - GRID_SIZE // 3, 2 * GRID_SIZE // 3, 2 * GRID_SIZE // 3)
-            if conf < 1.0:
-                painter.setFont(QFont("Arial", 8))
-                painter.setPen(QColor(255, 0, 0))
-                painter.drawText(cx + 10, cy + 5, f"{conf:.2f}")
-
-        for (x, y), conf in self.white_pieces.items():
-            cx = MARGIN + x * GRID_SIZE + GRID_SIZE // 2
-            cy = MARGIN + y * GRID_SIZE + GRID_SIZE // 2
-            painter.setBrush(QBrush(QColor(255, 255, 255)))
-            painter.setPen(QPen(QColor(0, 0, 0), 1))
-            painter.drawEllipse(cx - GRID_SIZE // 3, cy - GRID_SIZE // 3, 2 * GRID_SIZE // 3, 2 * GRID_SIZE // 3)
-            if conf < 1.0:
-                painter.setFont(QFont("Arial", 8))
-                painter.setPen(QColor(255, 0, 0))
-                painter.drawText(cx + 10, cy + 5, f"{conf:.2f}")
-
-class HomePage(QWidget):
-    def __init__(self):
-        super().__init__()
-        layout = QVBoxLayout(self)
-        title = QLabel("欢迎使用智能五子棋机械臂控制系统")
-        title.setAlignment(Qt.AlignCenter)
-        title.setFont(QFont("Arial", 16, QFont.Bold))
-        layout.addWidget(title)
-        desc = QLabel("这是一个集成YOLO检测、AI决策和机械臂控制的五子棋对弈系统。\n请选择左侧导航进入相应模块。")
-        desc.setAlignment(Qt.AlignCenter)
-        layout.addWidget(desc)
-        layout.addStretch()
-
-class SettingsPage(QWidget):
-    def __init__(self):
-        super().__init__()
-        layout = QVBoxLayout(self)
-        title = QLabel("系统设置")
-        title.setFont(QFont("Arial", 14, QFont.Bold))
-        layout.addWidget(title)
-
-        grid = QGridLayout()
-        self.ip_edit = QLineEdit("127.0.0.1")
-        self.port_edit = QLineEdit("5005")
-        self.mod_combo = QComboBox()
-        self.mod_combo.addItems(["简单", "中等", "固若金汤", "和我一样6的Level"])
-        grid.addWidget(QLabel("UDP IP:"), 0, 0)
-        grid.addWidget(self.ip_edit, 0, 1)
-        grid.addWidget(QLabel("UDP Port:"), 1, 0)
-        grid.addWidget(self.port_edit, 1, 1)
-        grid.addWidget(QLabel("AI难度:"), 2, 0)
-        grid.addWidget(self.mod_combo, 2, 1)
-        layout.addLayout(grid)
-
-        save_btn = QPushButton("保存设置")
-        save_btn.clicked.connect(self.save_settings)
-        layout.addWidget(save_btn)
-        layout.addStretch()
-
-    def save_settings(self):
-        global qt_main
-        qt_main.mod = self.mod_combo.currentText()
-        print(f"设置保存: AI难度 = {qt_main.mod}")
-
-class ArmControlPage(QWidget):
-    def __init__(self):
-        super().__init__()
-        layout = QHBoxLayout(self)
-        title = QLabel("机械臂控制")
-        title.setFont(QFont("Arial", 14, QFont.Bold))
-        layout.addWidget(title)
-
-        control_layout = QVBoxLayout()
-        self.start_btn = QPushButton("开始控制")
-        self.start_btn.clicked.connect(self.start_control)
-        self.stop_btn = QPushButton("停止控制")
-        self.stop_btn.clicked.connect(self.stop_control)
-        self.calibrate_btn = QPushButton("校准机械臂")
-        control_layout.addWidget(self.start_btn)
-        control_layout.addWidget(self.stop_btn)
-        control_layout.addWidget(self.calibrate_btn)
-        control_layout.addStretch()
-
-        self.chessboard = ChessBoardWidget()
-        layout.addLayout(control_layout, 1)
-        layout.addWidget(self.chessboard, 3)
-
-        self.detect_timer = QTimer(self)
-        self.detect_timer.timeout.connect(self.run_qt_main_detection)
-
-    def start_control(self):
-        self.detect_timer.start(1000)
-        print("机械臂控制启动")
-        qt_main.start_qt_app()
-
-    def stop_control(self):
-        self.detect_timer.stop()
-        global qt_main
-        qt_main.detect_flag = False
-        print("机械臂控制停止")
-
-    def run_qt_main_detection(self):
-        global qt_main
-        qt_main.detct(qt_main.pre_img, qt_main.self_yolo, qt_main.mod, qt_main.go_stones, qt_main.status_now)
-        self.chessboard.update_pieces({"black_pieces": qt_main.history_set, "white_pieces": set()})
-
-class ImageProcessPage(QWidget):
-    def __init__(self):
-        super().__init__()
-        layout = QVBoxLayout(self)
-        title = QLabel("图像处理")
-        title.setFont(QFont("Arial", 14, QFont.Bold))
-        layout.addWidget(title)
-
-        self.image_label = QLabel("图像显示区域")
-        self.image_label.setFixedSize(640, 480)
-        self.image_label.setStyleSheet("border: 1px solid black; background-color: gray;")
-        self.image_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.image_label)
-
-        detect_btn = QPushButton("开始检测")
-        detect_btn.clicked.connect(self.start_detection)
-        layout.addWidget(detect_btn)
-        layout.addStretch()
-
-    def start_detection(self):
-        print("开始图像检测")
-        pixmap = QPixmap("res_img.jpg")
-        self.image_label.setPixmap(pixmap.scaled(self.image_label.size(), Qt.KeepAspectRatio))
-
-class AIPlayPage(QWidget):
-    def __init__(self):
-        super().__init__()
-        layout = QVBoxLayout(self)
-        title = QLabel("AI对弈")
-        title.setFont(QFont("Arial", 14, QFont.Bold))
-        layout.addWidget(title)
-
-        steps_layout = QHBoxLayout()
-        self.step1_btn = QPushButton("步骤1: 初始化")
-        self.step2_btn = QPushButton("步骤2: 检测")
-        self.step3_btn = QPushButton("步骤3: 下棋")
-        self.step4_btn = QPushButton("步骤4: 分析")
-        self.step5_btn = QPushButton("步骤5: 结束")
-        steps_layout.addWidget(self.step1_btn)
-        steps_layout.addWidget(self.step2_btn)
-        steps_layout.addWidget(self.step3_btn)
-        steps_layout.addWidget(self.step4_btn)
-        steps_layout.addWidget(self.step5_btn)
-        layout.addLayout(steps_layout)
-
-        self.content_frame = QFrame()
-        self.content_layout = QVBoxLayout(self.content_frame)
-        self.content_label = QLabel("请选择步骤以查看详情")
-        self.content_layout.addWidget(self.content_label)
-        layout.addWidget(self.content_frame)
-
-        options_layout = QVBoxLayout()
-        self.color_combo = QComboBox()
-        self.color_combo.addItems(["黑子", "白子"])
-        options_layout.addWidget(QLabel("执棋颜色:"))
-        options_layout.addWidget(self.color_combo)
-        self.color_combo.currentTextChanged.connect(self.update_color)
-        self.status_label = QLabel("状态: 等待")
-        options_layout.addWidget(self.status_label)
-        play_btn = QPushButton("开始对弈")
-        play_btn.clicked.connect(self.start_play)
-        options_layout.addWidget(play_btn)
-        options_layout.addStretch()
-        layout.addLayout(options_layout)
-
-        self.step1_btn.clicked.connect(lambda: self.update_step_content("初始化系统和机械臂"))
-        self.step2_btn.clicked.connect(lambda: self.update_step_content("进行YOLO图像检测"))
-        self.step3_btn.clicked.connect(lambda: self.update_step_content("AI决策并机械臂下棋"))
-        self.step4_btn.clicked.connect(lambda: self.update_step_content("分析棋局和胜负"))
-        self.step5_btn.clicked.connect(lambda: self.update_step_content("结束对弈并清理"))
-
-    def update_step_content(self, text):
-        self.content_label.setText(text)
-
-    def update_color(self, color):
-        global qt_main
-        qt_main.go_stones = "black" if color == "黑子" else "white"
-        print(f"更新执棋颜色: {qt_main.go_stones}")
-
-    def start_play(self):
-        global qt_main
-        qt_main.status_now = 'playing'
-        print("开始AI对弈")
-
-class DataAnalysisPage(QWidget):
-    def __init__(self):
-        super().__init__()
-        layout = QVBoxLayout(self)
-        title = QLabel("数据分析")
-        title.setFont(QFont("Arial", 14, QFont.Bold))
-        layout.addWidget(title)
-
-        self.log_text = QTextEdit()
-        self.log_text.setPlaceholderText("日志和分析数据将显示在这里...")
-        layout.addWidget(self.log_text)
-        layout.addStretch()
-
-class HelpPage(QWidget):
-    def __init__(self):
-        super().__init__()
-        layout = QVBoxLayout(self)
-        title = QLabel("帮助")
-        title.setFont(QFont("Arial", 14, QFont.Bold))
-        layout.addWidget(title)
-        help_text = QLabel("用户手册和常见问题解答。\n联系支持：support@example.com")
-        help_text.setAlignment(Qt.AlignCenter)
-        layout.addWidget(help_text)
-        layout.addStretch()
-
-class DataCollectionPage(camera_data_qt.CameraGUI):
-    def __init__(self):
-        super().__init__()
-        # Customize the title or other properties if needed
+        # Customize the title
         self.setWindowTitle("数据收集模块")
+
+class YOLOBoardWidget(QWidget):
+    """YOLO 棋局监控小部件，复用 qt_YOLO.py 的逻辑，并集成 game_analysis.py 的分析功能"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+
+        # 棋盘面板 (复用 YoloGobangBoard)
+        display_panel = QWidget()
+        display_layout = QHBoxLayout(display_panel)
+        self.gobang_board = YoloGobangBoard()
+        display_layout.addWidget(self.gobang_board)
+        layout.addWidget(display_panel)
+
+        # 历史记录面板 (复用 QListWidget)
+        self.history_list = QListWidget()
+        self.history_list.setFixedHeight(150)
+        layout.addWidget(self.history_list)
+
+        # 配置面板（从 game_analysis.py 提取变量配置到 UI）
+        config_panel = QWidget()
+        config_layout = QHBoxLayout(config_panel)
+
+        # 模型路径输入
+        self.model_path_edit = QLineEdit()
+        self.model_path_edit.setPlaceholderText("YOLO 模型路径 (默认: yolov5/runs/train/exp5/weights/best.pt)")
+        config_layout.addWidget(QLabel("模型路径:"))
+        config_layout.addWidget(self.model_path_edit)
+        browse_model_btn = QPushButton("打开文件")
+        browse_model_btn.clicked.connect(self.browse_model)
+        config_layout.addWidget(browse_model_btn)
+
+        # 难度选择
+        self.difficulty_combo = QComboBox()
+        self.difficulty_combo.addItems(['简单', '中等', '困难'])
+        self.difficulty_combo.setCurrentText('中等')
+        config_layout.addWidget(QLabel("难度:"))
+        config_layout.addWidget(self.difficulty_combo)
+
+        # AI 持棋颜色选择
+        self.ai_color_combo = QComboBox()
+        self.ai_color_combo.addItems(['black', 'white'])
+        self.ai_color_combo.setCurrentText('black')
+        config_layout.addWidget(QLabel("AI 颜色:"))
+        config_layout.addWidget(self.ai_color_combo)
+
+        # 图像源输入（路径或摄像头 0-5）
+        self.image_source_edit = QLineEdit()
+        self.image_source_edit.setPlaceholderText("图像源 (路径或摄像头 0-5)")
+        config_layout.addWidget(QLabel("图像源:"))
+        config_layout.addWidget(self.image_source_edit)
+        browse_image_btn = QPushButton("打开文件")
+        browse_image_btn.clicked.connect(self.browse_image_source)
+        config_layout.addWidget(browse_image_btn)
+
+        layout.addWidget(config_panel)
+
+        # 分析按钮
+        analyze_btn = QPushButton("分析棋局并获取 AI 走法")
+        analyze_btn.clicked.connect(self.analyze_chess_board)
+        layout.addWidget(analyze_btn)
+
+        # 清除按钮
+        clear_btn = QPushButton("清除棋盘")
+        clear_btn.clicked.connect(self.clear_chess_board)
+        layout.addWidget(clear_btn)
+
+        # UDP socket 初始化 (复用 qt_YOLO.py)
+        self.yolo_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.yolo_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            self.yolo_socket.bind(('0.0.0.0', 5005))
+        except Exception as e:
+            print(f"UDP绑定失败: {e}")
+            sys.exit(1)
+
+        # 定时器 (复用 qt_YOLO.py 的 timer)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.receive_yolo_data)
+        self.timer.start(100)
+
+    def browse_model(self):
+        """打开文件对话框选择模型路径"""
+        default_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'yolov5/runs/train/exp5/weights'))
+        fname, _ = QFileDialog.getOpenFileName(self, "Select Model File", default_dir, "PT Files (*.pt)")
+        if fname:
+            self.model_path_edit.setText(fname)
+
+    def browse_image_source(self):
+        """打开文件对话框选择图像文件路径"""
+        fname, _ = QFileDialog.getOpenFileName(self, "Select Image Source", "", "Images (*.jpg *.png *.bmp *.jpeg);;All Files (*)")
+        if fname:
+            self.image_source_edit.setText(fname)
+
+    def receive_yolo_data(self):
+        """接收 YOLO 数据 (直接复用/微调 qt_YOLO.py 的方法)"""
+        try:
+            self.yolo_socket.settimeout(0.01)
+            data, addr = self.yolo_socket.recvfrom(1024)
+            yolo_data = json.loads(data.decode('utf-8'))
+
+            black_positions = {(int(x), int(y)) for [x, y] in yolo_data.get("black_pieces", [])}
+            white_positions = {(int(x), int(y)) for [x, y] in yolo_data.get("white_pieces", [])}
+            black_conf = [(int(x), int(y), float(conf)) for [x, y, conf] in yolo_data.get("black_conf", [])]
+            white_conf = [(int(x), int(y), float(conf)) for [x, y, conf] in yolo_data.get("white_conf", [])]
+
+            # 构建历史记录 (复用逻辑)
+            history_list = []
+            timestamp = time.time()
+            for x, y, conf in black_conf:
+                if (x, y) not in set(self.gobang_board.black_pieces.keys()) | set(
+                        self.gobang_board.white_pieces.keys()):
+                    history_list.append((x, y, "黑", conf, timestamp))
+            for x, y, conf in white_conf:
+                if (x, y) not in set(self.gobang_board.black_pieces.keys()) | set(
+                        self.gobang_board.white_pieces.keys()):
+                    history_list.append((x, y, "白", conf, timestamp))
+
+            # 更新棋盘 (调用 GobangBoard 方法)
+            success, message = self.gobang_board.update_chess_state(black_positions, white_positions, black_conf,
+                                                                    white_conf, history_list)
+            if success:
+                for x, y, color, conf, _ in history_list:
+                    self.history_list.addItem(f"({x}, {y}) {color} {conf * 100:.0f}%")
+        except socket.timeout:
+            pass
+        except json.JSONDecodeError as e:
+            print(f"YOLO数据格式错误: {e}")
+        except Exception as e:
+            print(f"YOLO数据处理错误: {e}")
+
+    def clear_chess_board(self):
+        """清除棋盘 (调用 GobangBoard 方法)"""
+        self.history_list.clear()
+        self.gobang_board.clear_chess_state()
+
+    def analyze_chess_board(self):
+        """集成 game_analysis.py 的 detect_endgame 功能，处理图像源并分析棋局"""
+        # 获取用户配置
+        model_path = self.model_path_edit.text() or os.path.join(
+            os.path.abspath(os.path.join(os.path.dirname(__file__), '..')), "yolov5/runs/train/exp5/weights/best.pt")
+        mod = self.difficulty_combo.currentText()
+        go_stones = self.ai_color_combo.currentText()  # AI 持棋颜色
+        image_source = self.image_source_edit.text()
+
+        if not image_source:
+            QMessageBox.warning(self, "错误", "请提供图像源（路径或摄像头 0-5）")
+            return
+
+        # 处理图像源：路径或摄像头
+        try:
+            if image_source.isdigit() and 0 <= int(image_source) <= 5:
+                # 摄像头
+                cap = cv2.VideoCapture(int(image_source))
+                ret, image = cap.read()
+                cap.release()
+                if not ret:
+                    raise ValueError("无法从摄像头读取图像")
+            else:
+                # 文件路径
+                image = cv2.imread(image_source)
+                if image is None:
+                    raise ValueError("无法读取图像文件")
+        except ValueError as e:
+            QMessageBox.warning(self, "错误", str(e))
+            return
+
+        # 初始化 YOLO 模型（从 game_analysis.py 复用）
+        self_yolo = YoloDetecter(weights=model_path, device='cpu')
+
+        # 复用 game_analysis.py 的 detect_endgame 核心逻辑（略微调整以适应 UI）
+        focus_finder = FocusFinder()
+        focus_image = image  # 简化，假设已聚焦（可扩展）
+
+        res_img, yolo_list = self_yolo.detect(focus_image)
+        img_shape = res_img.shape
+
+        pixel_list = yolo_to_pixel(yolo_list, res_img.shape[0], res_img.shape[1])
+        coordinate_list = coordinate_mapping(pixel_list, WIDTH_GOBANG, LENGTH_GOBANG, img_shape[0], img_shape[1])
+        pos_set, ai_pos_set, pos_set_conf, ai_pos_set_conf = coordinate_to_pos(coordinate_list, go_stones)
+
+        # 统计棋子并判断颜色（复用逻辑）
+        black_count = len(pos_set if go_stones == "black" else ai_pos_set)
+        white_count = len(pos_set if go_stones == "white" else ai_pos_set)
+        count_diff = abs(black_count - white_count)
+
+        if count_diff > 1:
+            QMessageBox.warning(self, "错误", "棋盘棋子个数存在问题")
+            return
+
+        ai_color = '黑棋' if (
+                    black_count > white_count or (black_count == white_count and go_stones == 'black')) else '白棋'
+
+        # 初始化棋盘（复用）
+        initialize_board(pos_set, ai_pos_set, go_stones)
+
+        # 使用大模型（复用 send_yolo_result 和 parase_response）
+        status_now = 'playing'
+        response_data = asyncio.run(send_yolo_result(pos_set, ai_pos_set, go_stones, status_now, mod))
+        ai_down_pos_x, ai_down_pos_y, reason, mod = parase_response(response_data)
+
+        # 发送 YOLO 数据到 UDP（复用 game_analysis.py 逻辑）
+        yolo_data = {
+            "black_pieces": list(ai_pos_set) if go_stones == "black" else list(pos_set),
+            "white_pieces": list(pos_set) if go_stones == "black" else list(ai_pos_set),
+            "ai_next_move": [ai_down_pos_x, ai_down_pos_y] if ai_down_pos_x is not None else None,
+            "black_conf": list(ai_pos_set_conf) if go_stones == "black" else list(pos_set_conf),
+            "white_conf": list(pos_set_conf) if go_stones == "black" else list(ai_pos_set_conf),
+        }
+        try:
+            yolo_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            yolo_socket.sendto(json.dumps(yolo_data).encode('utf-8'), (YOLO_UDP_IP, YOLO_UDP_PORT))
+            print(f"发送 YOLO 数据: {yolo_data}")
+            yolo_socket.close()
+        except socket.error as e:
+            print(f"发送失败: {e}")
+
+        # 更新历史列表显示 AI 走法
+        if ai_down_pos_x is not None:
+            self.history_list.addItem(f"AI 推荐 ({ai_down_pos_x}, {ai_down_pos_y}) {ai_color} - 原因: {reason}")
+        else:
+            self.history_list.addItem("无法生成下一步走法")
+
+    def closeEvent(self, event):
+        """关闭 socket (复用 qt_YOLO.py)"""
+        self.yolo_socket.close()
+        event.accept()
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("智能五子棋机械臂控制系统")
-        self.setGeometry(100, 100, 1200, 800)
+        self.setWindowTitle("智能五子棋数据收集系统 (集成 YOLO 和分析)")
+        self.setGeometry(100, 100, 800, 600)
 
         # Central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        main_layout = QHBoxLayout(central_widget)
+        main_layout = QVBoxLayout(central_widget)
 
-        # Left navigation sidebar
-        self.nav_list = QListWidget()
-        self.nav_list.setFixedWidth(150)
-        nav_items = ["首页", "系统设置", "机械臂控制", "图像处理", "AI对弈", "数据分析", "帮助", "数据收集"]
-        self.nav_list.addItems(nav_items)
-        self.nav_list.itemClicked.connect(self.switch_page)
-        main_layout.addWidget(self.nav_list)
+        # Title
+        title = QLabel("智能五子棋系统")
+        title.setAlignment(Qt.AlignCenter)
+        title.setFont(QFont("Arial", 16, QFont.Bold))
+        main_layout.addWidget(title)
 
-        # Central stacked widget for pages
-        self.stacked_widget = QStackedWidget()
-        self.pages = [
-            HomePage(),
-            SettingsPage(),
-            ArmControlPage(),
-            ImageProcessPage(),
-            AIPlayPage(),
-            DataAnalysisPage(),
-            HelpPage(),
-            DataCollectionPage()
-        ]
-        for page in self.pages:
-            self.stacked_widget.addWidget(page)
-        main_layout.addWidget(self.stacked_widget)
+        # Tab widget for sections
+        self.tab_widget = QTabWidget()
+        main_layout.addWidget(self.tab_widget)
+
+        # Tab 1: 数据收集 (原有)
+        self.data_collection_page = DataCollectionPage()
+        self.tab_widget.addTab(self.data_collection_page, "数据收集模块")
+
+        # Tab 2: YOLO 棋局监控 (原有，集成分析)
+        self.yolo_board = YOLOBoardWidget(self)
+        self.tab_widget.addTab(self.yolo_board, "YOLO 棋局监控与分析")
+
+        # Tab 3: 机械臂控制 (原有，复用 robot_arm.py 的 MainWindow)
+        self.arm_control = ArmMainWindow()
+        self.tab_widget.addTab(self.arm_control.centralWidget(), "机械臂控制模块")
+
+        # Tab 4: 自动标注模块 (新增，复用 annotation_qt.py 的 AutoAnnotationGUI)
+        self.auto_annotation = AutoAnnotationGUI()
+        self.tab_widget.addTab(self.auto_annotation.centralWidget(), "自动标注模块")
 
         # Status bar
-        self.statusBar().showMessage("系统就绪")
-
-        # UDP listener
-        self.udp_thread = UDPListenerThread()
-        self.udp_thread.data_received.connect(self.on_data_received)
-        self.udp_thread.start()
-
-        # Initial page
-        self.nav_list.setCurrentRow(0)
-        self.switch_page(self.nav_list.item(0))
-
-    def switch_page(self, item):
-        index = self.nav_list.row(item)
-        self.stacked_widget.setCurrentIndex(index)
-
-    def on_data_received(self, yolo_data):
-        if len(self.pages) > 2:
-            if isinstance(self.pages[2], ArmControlPage):
-                self.pages[2].chessboard.update_pieces(yolo_data)
-        self.statusBar().showMessage(f"收到YOLO数据: {len(yolo_data.get('black_pieces', []))} 黑子, {len(yolo_data.get('white_pieces', []))} 白子")
+        self.statusBar().showMessage("系统就绪 (数据收集 + YOLO 监控 + 分析 + 机械臂控制 + 自动标注)")
 
     def closeEvent(self, event):
-        global qt_main
-        qt_main.detect_flag = False
-        self.udp_thread.stop()
+        # 确保干净关闭 (包括 YOLO socket 和机械臂串口)
+        self.yolo_board.closeEvent(event)
+        if hasattr(self.arm_control, 'ser') and self.arm_control.ser is not None and self.arm_control.ser.is_open:
+            self.arm_control.ser.close()
         event.accept()
 
 if __name__ == "__main__":
