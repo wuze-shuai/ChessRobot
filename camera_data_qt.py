@@ -38,6 +38,11 @@ class CameraGUI(QMainWindow):
         controls_layout = QHBoxLayout()
         main_layout.addLayout(controls_layout)
 
+        # 摄像头编号输入
+        self.camera_input = QLineEdit('0')  # 默认摄像头编号为0
+        controls_layout.addWidget(QLabel("摄像头编号："))
+        controls_layout.addWidget(self.camera_input)
+
         # 输出目录选择
         self.dir_input = QLineEdit('images')
         self.dir_button = QPushButton("选择输出目录")
@@ -79,6 +84,7 @@ class CameraGUI(QMainWindow):
     def start_capture(self):
         if not self.is_capturing:
             try:
+                camera_id = int(self.camera_input.text())
                 interval = float(self.interval_input.text())
                 output_dir = self.dir_input.text()
                 get_data_mode = self.mode_checkbox.isChecked()
@@ -86,7 +92,7 @@ class CameraGUI(QMainWindow):
                 if not os.path.exists(output_dir):
                     os.makedirs(output_dir)
 
-                self.cap = cv2.VideoCapture(0)
+                self.cap = cv2.VideoCapture(camera_id)
                 if not self.cap.isOpened():
                     self.status_text.append("错误：无法打开摄像头")
                     return

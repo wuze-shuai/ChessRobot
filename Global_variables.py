@@ -117,3 +117,5 @@ UART_PORT = "COM20"
 
 remind_time = 10        # 提示“该你落子了”时间间隔
 start_time = None
+
+ALGORITHM = None #使用的对弈算法

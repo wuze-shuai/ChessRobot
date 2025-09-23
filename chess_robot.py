@@ -27,7 +27,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-from tools.API_key import *
+from Tools.API_key import *
 
 def play_mp3(file_path):
     # 初始化 pygame 模块

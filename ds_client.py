@@ -15,7 +15,7 @@ from ql_main import ql_main
 from yolov5.detect_self import YoloDetecter
 from image_find_focus import FocusFinder
 # from finde_focus import FocusFinder
-from tools import coordinate_mapping, coordinate_to_pos, pos_to_coordinate, Check, get_video_frame, safe_detect, \
+from Tools import coordinate_mapping, coordinate_to_pos, pos_to_coordinate, Check, get_video_frame, safe_detect, \
                 get_current_boards, compare_boards, play_sound
 import websockets
 import asyncio

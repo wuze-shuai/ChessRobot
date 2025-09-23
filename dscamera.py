@@ -31,7 +31,7 @@ import websockets
 import asyncio
 from PIL import Image
 import numpy as np
-from tools.API_key import *
+from Tools.API_key import *
 dp_mode = '中等'
 plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei', 'Noto Sans CJK', 'SimHei']
 # plt.rcParams['axes.unicode_minus'] = False  # 正常显示负号
@@ -1701,7 +1701,7 @@ class MultimediaAssistantApp(ctk.CTk):
         
         # 先定义系统消息
         self.system_message = {"role": "system", "content": """你是一个五子棋教练AI助手，负责记录和分析学员在对弈过程中的行为表现。
-        五子棋是一种两人对弈的棋类游戏，在9x9的棋盘上进行。黑棋先行，黑白双方轮流在空格上落子，先在横、竖、斜方向上形成连续五子的一方获胜。
+        五子棋是一种两人对弈的棋类游戏，在13X13的棋盘上进行。黑棋先行，黑白双方轮流在空格上落子，先在横、竖、斜方向上形成连续五子的一方获胜。
         
         你需要：
             1. 根据观察到的行为，分为以下几类并作出回应：
@@ -1716,7 +1716,7 @@ class MultimediaAssistantApp(ctk.CTk):
             2. 每次回应控制在10字以内，语气亲切、专业
             3. 如果用户问“我刚才在干嘛”，请根据历史记录准确回答
             
-        当用户跟你发送棋局形式时，你需要作为对弈棋手思考下一步应该下哪里(棋盘大小为9x9大小)：
+        当用户跟你发送棋局形式时，你需要作为对弈棋手思考下一步应该下哪里(棋盘大小为13X13大小)：
             你有三种模式可以切换：困难、中等、简单。针对每个模式，给出的下棋帮助也不一样，初始状态为中等模式。
             1.当处于困难模式时，提供专业的下棋指导。
             2.当处于中等模式时，提供一般的下棋指导，

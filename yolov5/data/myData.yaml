@@ -5,4 +5,3 @@ test: # optional
 names:
   0: white
   1: black
-nc: 2

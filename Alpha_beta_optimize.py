@@ -12,7 +12,8 @@ import Calcu_every_step_score
 
 
 col_num = Global_variables.COL_NUM
-
+black_score = 0
+white_score = 0
 # used for testing
 test = [[0 for i in range(col_num)] for j in range(col_num)]
 a = [[0 for i in range(col_num)] for j in range(col_num)]

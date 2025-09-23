@@ -118,10 +118,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("棋局状态实时展示界面")
         self.resize(400, 580)
-        self.ESP32_IP = Global_variables.ESP32_IP
-        self.ESP32_PORT = 8081
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.client_socket.connect((self.ESP32_IP, self.ESP32_PORT))
+        # self.ESP32_IP = Global_variables.ESP32_IP
+        # self.ESP32_PORT = 8081
+        # self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # self.client_socket.connect((self.ESP32_IP, self.ESP32_PORT))
 
         self.yolo_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.yolo_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -202,31 +202,9 @@ class MainWindow(QMainWindow):
         self.history_list.clear()
         return self.gobang_board.clear_chess_state()
 
-    def set_arm_angles(self, angle1, angle2, angle3):
-        try:
-            self.axis1_value = f"{float(angle1):.2f}"
-            self.axis2_value = f"{float(angle2):.2f}"
-            self.axis3_value = f"{float(angle3):.2f}"
-            return True, "角度值设置成功"
-        except ValueError:
-            return False, "请输入有效的数字"
-
     def check_coordinate(self, file_path, x, y):
         try:
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-            angles = data.get("angles", {})
-            key = f"{x},{y}"
-            if key in angles:
-                a, b, c = map(float, angles[key].split('/'))
-                self.axis1_value = f"{a:.2f}"
-                self.axis2_value = f"{b:.2f}"
-                self.axis3_value = f"{c:.2f}"
-            else:
-                # print(f"坐标({x},{y})不存在")
-                pass
-
-            chess_state = data.get("chess_state", {})
+            chess_state = {}
             black_pieces = {(x, y) for [x, y] in chess_state.get("black_pieces", [])}
             white_pieces = {(x, y) for [x, y] in chess_state.get("white_pieces", [])}
             black_conf = [(x, y, 1.0) for [x, y] in chess_state.get("black_pieces", [])]

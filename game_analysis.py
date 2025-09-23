@@ -201,10 +201,8 @@ def detect_endgame(image, self_yolo, go_stones, mod):
     pixel_list = yolo_to_pixel(yolo_list, res_img.shape[0], res_img.shape[1])
     coordinate_list = coordinate_mapping(pixel_list, WIDTH_GOBANG, LENGTH_GOBANG, img_shape[0], img_shape[1])
     pos_set, ai_pos_set, pos_set_conf, ai_pos_set_conf = coordinate_to_pos(coordinate_list, go_stones)
-    # pos_set = [(7, 1), (5, 4), (6, 4), (1, 4), (7, 2), (6, 3)]
-    # ai_pos_set = [(4, 4), (6, 2), (2, 4), (3, 4), (2, 3), (5, 3)]
-    ai_pos_set= [(4, 4), (5, 5), (8, 4), (7, 7), (6, 5), (5, 4), (5, 7), (6, 7), (7, 6), (5, 6), (2, 2), (6, 6),(7, 5), (6, 3), (1, 3), (8, 5), (5, 2)]
-    pos_set=[(7, 4), (2, 4), (8, 8), (3, 4), (2, 7), (4, 3),(5, 8), (4, 6), (6, 4), (2, 3), (4, 5), (3, 3), (2, 6), (4, 8), (5, 3), (2, 5), (4, 7)]
+    # ai_pos_set= [(4, 4), (5, 5), (8, 4), (7, 7), (6, 5), (5, 4), (5, 7), (6, 7), (7, 6), (5, 6), (2, 2), (6, 6),(7, 5), (6, 3), (1, 3), (8, 5), (5, 2)]
+    # pos_set=[(7, 4), (2, 4), (8, 8), (3, 4), (2, 7), (4, 3),(5, 8), (4, 6), (6, 4), (2, 3), (4, 5), (3, 3), (2, 6), (4, 8), (5, 3), (2, 5), (4, 7)]
     # 统计黑白棋子个数并判断
     black_count = len(pos_set if go_stones == "black" else ai_pos_set)
     white_count = len(pos_set if go_stones == "white" else ai_pos_set)
@@ -233,28 +231,28 @@ def detect_endgame(image, self_yolo, go_stones, mod):
         print("棋盘棋子个数存在问题")
 
     # 调用Alpha-Beta剪枝算法
-    # machine_pos = AB_optimize.alpha_beta_process(mod)
-    # if not machine_pos:
-    #     print("无法生成下一步走法，可能是棋局已结束！")
-    #     yolo_data["ai_next_move"] = None
-    # else:
-    #     ai_down_pos_x, ai_down_pos_y = machine_pos
-    #     print(f"AI推荐{ai_color}下一步走法：({ai_down_pos_x}, {ai_down_pos_y})")
-    #     yolo_data["ai_next_move"] = [ai_down_pos_x, ai_down_pos_y]
+    machine_pos = AB_optimize.alpha_beta_process(mod)
+    if not machine_pos:
+        print("无法生成下一步走法，可能是棋局已结束！")
+        yolo_data["ai_next_move"] = None
+    else:
+        ai_down_pos_x, ai_down_pos_y = machine_pos
+        print(f"AI推荐{ai_color}下一步走法：({ai_down_pos_x}, {ai_down_pos_y})")
+        yolo_data["ai_next_move"] = [ai_down_pos_x, ai_down_pos_y]
 
     # 大模型算法
-    status_now = 'playing'
-    response_data = asyncio.run(
-        send_yolo_result(pos_set, ai_pos_set,go_stones, status_now, mod))
-    ai_down_pos_x, ai_down_pos_y, reason, mod = parase_response(response_data)
-    yolo_data["ai_next_move"] = [ai_down_pos_x, ai_down_pos_y]
+    # status_now = 'playing'
+    # response_data = asyncio.run(
+    #     send_yolo_result(pos_set, ai_pos_set,go_stones, status_now, mod))
+    # ai_down_pos_x, ai_down_pos_y, reason, mod = parase_response(response_data)
+    # yolo_data["ai_next_move"] = [ai_down_pos_x, ai_down_pos_y]
 
     # 发送包含AI走法的数据
-    # try:
-    #     yolo_socket.sendto(json.dumps(yolo_data).encode('utf-8'), (YOLO_UDP_IP, YOLO_UDP_PORT))
-    #     print(f"发送初始YOLO数据到Qt界面: {yolo_data}")
-    # except socket.error as e:
-    #     print(f"发送AI走法数据失败: {e}")
+    try:
+        yolo_socket.sendto(json.dumps(yolo_data).encode('utf-8'), (YOLO_UDP_IP, YOLO_UDP_PORT))
+        print(f"发送初始YOLO数据到Qt界面: {yolo_data}")
+    except socket.error as e:
+        print(f"发送AI走法数据失败: {e}")
 
     return ai_down_pos_x if ai_down_pos_x else None, ai_down_pos_y if ai_down_pos_y else None
 
@@ -289,7 +287,6 @@ if __name__ == '__main__':
     # 读取本地棋谱
     img_analysis = r'E:\13project\03下棋机器人有线通讯\HM-BW\images\20250730_110836.jpg'
     image = cv2.imread(img_analysis)
-
 
     try:
         # 检测残局并获取AI走法

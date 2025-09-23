@@ -20,8 +20,13 @@ import websocket
 import websockets
 import asyncio
 import json
+import Alpha_beta_optimize
 #机械臂控制函数
 # from ql_main import ql_main
+
+
+ALGORITHM = 'AB'          # 默认值，后面会被 Qt 覆盖
+_algorithm_lock = threading.Lock()
 
 # UDP客户端用于发送YOLO数据到Qt界面
 YOLO_UDP_IP = "127.0.0.1"
@@ -231,20 +236,21 @@ def detect_endgame(image, self_yolo, go_stones, mod):
         print("棋盘棋子个数存在问题")
 
     # 调用Alpha-Beta剪枝算法
-    # machine_pos = AB_optimize.alpha_beta_process(mod)
-    # if not machine_pos:
-    #     print("无法生成下一步走法，可能是棋局已结束！")
-    #     yolo_data["ai_next_move"] = None
-    # else:
-    #     ai_down_pos_x, ai_down_pos_y = machine_pos
-    #     print(f"AI推荐{ai_color}下一步走法：({ai_down_pos_x}, {ai_down_pos_y})")
-    #     yolo_data["ai_next_move"] = [ai_down_pos_x, ai_down_pos_y]
+    if ALGORITHM == 'AB':
+        machine_pos = AB_optimize.alpha_beta_process(mod)
+        if not machine_pos:
+            print("无法生成下一步走法，可能是棋局已结束！")
+            ai_down_pos_x, ai_down_pos_y = 0, 0
+        else:
+            ai_down_pos_x, ai_down_pos_y = machine_pos
+            print(f"AI推荐下一步走法：({ai_down_pos_x}, {ai_down_pos_y})")
+    else:
+        # 大模型算法
+        status_now = 'playing'
+        response_data = asyncio.run(
+            send_yolo_result(pos_set, ai_pos_set,go_stones, status_now, mod))
+        ai_down_pos_x, ai_down_pos_y, reason, mod = parase_response(response_data)
 
-    # 大模型算法
-    status_now = 'playing'
-    response_data = asyncio.run(
-        send_yolo_result(pos_set, ai_pos_set,go_stones, status_now, mod))
-    ai_down_pos_x, ai_down_pos_y, reason, mod = parase_response(response_data)
     yolo_data["ai_next_move"] = [ai_down_pos_x, ai_down_pos_y]
 
     # 发送包含AI走法的数据
@@ -271,11 +277,17 @@ if __name__ == '__main__':
     qt_thread = threading.Thread(target=start_qt_app, daemon=True)
     qt_thread.start()
 
+    while True:
+        with _algorithm_lock:
+            if Global_variables.ALGORITHM is not None:  # Qt 已经把用户选择写进来了
+                ALGORITHM = Global_variables.ALGORITHM
+                break
+        time.sleep(0.2)
     # 初始化
     mod = '中等'  # 难度模式
     device = 'cpu'
     go_stones = "black"  # AI执棋颜色
-    model_path = get_root() + "/yolov5/runs/train/exp5/weights/best.pt"
+    model_path ="../yolov5/runs/train/exp5/weights/best.pt"
     self_yolo = YoloDetecter(weights=model_path, device=device)
     # 启动 WebSocket 客户端
     start_websocket()

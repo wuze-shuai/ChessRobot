@@ -21,7 +21,7 @@ from funasr.utils.postprocess_utils import rich_transcription_postprocess
 from datetime import datetime, timedelta
 import re
 from cozepy import Coze, TokenAuth, COZE_CN_BASE_URL
-from tools.API_key import *
+from Tools.API_key import *
 # ---------------- Configuration ----------------
 # OSS Configuration
 
