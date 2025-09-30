@@ -8,7 +8,7 @@
 
 import copy
 import Global_variables
-import Tools.Calcu_every_step_score
+import Tools.Calcu_every_step_score as Calcu_every_step_score
 
 
 col_num = Global_variables.COL_NUM

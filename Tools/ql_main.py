@@ -39,5 +39,5 @@ def ql_main(board_x,board_y,retract=False):
     print(restored_board[(board_x, board_y)])
     result=restored_board[(board_x, board_y)]+'/'+str(retract)
     # client_socket.send(result.encode())  # 无线发送数据
-    # ser.write(result.encode())    #有线发送数据
+    ser.write(result.encode())    #有线发送数据
     print("Sent:", result)

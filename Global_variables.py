@@ -108,11 +108,11 @@ board_scores = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 
 search_range = []
 
-filename = "./board/board.txt"
+filename = "./board/board4.txt"
 
 SOUND_PATH = "sound/"         # 音频文件地址
 
-UART_PORT = "COM20"
+UART_PORT = "COM21"
 # ESP32_IP =  "192.168.40.184"
 
 remind_time = 10        # 提示“该你落子了”时间间隔

@@ -19,7 +19,6 @@ import socket
 from GUI.qt_YOLO import MainWindow
 from pathlib import Path
 
-
 detect_flag = True 
 # 玩家历史落子
 history_set = set()
@@ -329,7 +328,7 @@ def on_error(ws, error):
     pass
 
 def on_close(ws, close_status_code, close_msg):
-    print("WebSocket 连接关闭，正在尝试重连...")
+    # print("WebSocket 连接关闭，正在尝试重连...")
     time.sleep(5)
     start_websocket()
 
@@ -449,7 +448,7 @@ if __name__ == '__main__':
         cv2.imwrite(f"./images/pre_img.jpg", pre_img)
 
         if max_diff > 120:
-            print(f"相邻两帧像素差异最大值大于一百二:{max_diff}")
+            print(f"相邻两帧像素差>120:{max_diff}")
             time.sleep(1)
             continue
 
