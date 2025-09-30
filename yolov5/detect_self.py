@@ -135,8 +135,8 @@ class YoloDetecter:
 # 简单 CLI 测试
 if __name__ == '__main__':
     import cv2
-    det = YoloDetecter(weights='yolov5s.pt', device='cpu')
-    img = cv2.imread(r'E:\13project\007ChessRobot\ChessRobot\yolov5\data\coco128\images\train2017\000000000109.jpg')
+    det = YoloDetecter(weights='best.pt', device='cpu')
+    img = cv2.imread(r'E:\13project\007ChessRobot\ChessRobot\yolov5\data\myData\images\val\test_video7_bright.jpg')
     out, bs = det.detect(img)
     print(bs)
     cv2.imshow('result', out)

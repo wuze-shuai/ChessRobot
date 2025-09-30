@@ -287,7 +287,8 @@ if __name__ == '__main__':
     mod = '中等'  # 难度模式
     device = 'cpu'
     go_stones = "black"  # AI执棋颜色
-    model_path ="../yolov5/runs/train/exp5/weights/best.pt"
+    # model_path ="../yolov5/runs/train/exp5/weights/best.pt"
+    model_path = "../yolov5/best.pt"
     self_yolo = YoloDetecter(weights=model_path, device=device)
     # 启动 WebSocket 客户端
     start_websocket()
