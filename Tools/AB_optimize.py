@@ -5,9 +5,8 @@
 日期：2025/07/30
 """
 
-import copy
 import Global_variables
-import Calcu_every_step_score
+import Tools.Calcu_every_step_score
 
 col_num = Global_variables.COL_NUM
 

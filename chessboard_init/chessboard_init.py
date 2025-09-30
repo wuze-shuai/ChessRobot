@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 import time
 import sys
@@ -8,7 +7,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import Global_variables
-from ql_main import ql_main
+from Tools.ql_main import ql_main
 # 五子棋棋盘参数
 ROW_GOBANG = 13  # 五子棋盘行数(宽度方向)
 COLUMN_GOBANG = 13  # 五子棋盘列数(长度方向)

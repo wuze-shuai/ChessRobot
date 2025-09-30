@@ -1,32 +1,25 @@
-# -*- coding: utf-8 -*-
-import time
+from Tools import Alpha_beta_optimize
 import cv2
 import websocket
 import threading
-import os
-import sys
-from pathlib import Path
 from PIL import Image
 import numpy as np
 import Global_variables
-# import Alpha_beta_optimize
-import AB_optimize
-import Alpha_beta_optimize
-from ql_main import ql_main
+from Tools.ql_main import ql_main
 from yolov5.detect_self import YoloDetecter
-from image_find_focus import FocusFinder
-# from finde_focus import FocusFinder
-from tools import coordinate_mapping, coordinate_to_pos, pos_to_coordinate, Check, get_video_frame, safe_detect, \
-                get_current_boards, compare_boards, play_sound
+from Tools.image_find_focus import FocusFinder
+from Tools.tools import coordinate_mapping, coordinate_to_pos, Check, get_video_frame, play_sound
 import websockets
 import asyncio
 import json
-from chess_qt import *
+import sys
+from PyQt5.QtWidgets import QApplication
+import time
 import socket
-# 导入Qt界面（假设robot_arm.py在同一目录）
-from qt_YOLO import MainWindow
+from GUI.qt_YOLO import MainWindow
 from pathlib import Path
-from ds_client import *
+
+
 detect_flag = True 
 # 玩家历史落子
 history_set = set()
@@ -148,7 +141,6 @@ def detct(image, self_yolo, mod, go_stones,status_now):
         # 保存旋转后的图像
         cv2.imwrite(f"images/res_img.jpg", rotated_img)
         print('yolo_list:',yolo_list)
-        # cv2.imwrite("res_img.jpg", res_img)
 
         img_shape = res_img.shape
 

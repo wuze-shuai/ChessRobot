@@ -5,7 +5,7 @@ import os
 # 将dir2的路径添加到sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import Global_variables
-from ql_main import ser
+from Tools.ql_main import ser
 # 从文件中加载字典
 def load_dict_from_file(filename):
     with open(filename, 'r') as f:

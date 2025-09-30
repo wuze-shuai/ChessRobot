@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QPushButton, QLineEdit, QLabel, QCheckBox, QFileDialog, QTextEdit)
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt
-from image_find_focus import FocusFinder
+from Tools.image_find_focus import FocusFinder
 import numpy as np
 
 class CameraGUI(QMainWindow):

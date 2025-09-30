@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QLabel,
         QFileDialog, QMessageBox, QComboBox)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap
-from image_find_focus import FocusFinder
+from Tools.image_find_focus import FocusFinder
 
 
 IMG_W, IMG_H = 320, 240

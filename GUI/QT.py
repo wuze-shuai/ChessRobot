@@ -12,13 +12,12 @@ import camera_data
 from qt_YOLO import GobangBoard as YoloGobangBoard  # 导入 YOLO 的 GobangBoard，添加别名以区分
 from game_analysis import (YoloDetecter, FocusFinder, yolo_to_pixel, coordinate_mapping, coordinate_to_pos,
                            initialize_board, send_yolo_result, parase_response, WIDTH_GOBANG, LENGTH_GOBANG,
-                           WIDTH_ERR_GOBANG, LENGTH_ERR_GOBANG, ROW_GOBANG, COLUMN_GOBANG,
-                           YOLO_UDP_IP, YOLO_UDP_PORT,AB_optimize)
+                           YOLO_UDP_IP, YOLO_UDP_PORT)
 import cv2
 import asyncio
 
 # 导入 robot_arm.py 中的 GobangBoard 和 MainWindow
-from robot_arm import GobangBoard as ArmGobangBoard, MainWindow as ArmMainWindow
+from robot_arm import MainWindow as ArmMainWindow
 
 # 导入 annotation_qt.py 中的 AutoAnnotationGUI
 from annotation_qt import AutoAnnotationGUI

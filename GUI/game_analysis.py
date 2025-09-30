@@ -1,15 +1,12 @@
-from time import sleep
 import cv2
-import numpy as np
 from pathlib import Path
 from PIL import Image
 import Global_variables
 import time
-import AB_optimize
+from Tools import AB_optimize
 from yolov5.detect_self import YoloDetecter
-from image_find_focus import FocusFinder
-from tools import coordinate_mapping, coordinate_to_pos, get_video_frame
-import json
+from Tools.image_find_focus import FocusFinder
+from Tools.tools import coordinate_mapping, coordinate_to_pos
 import socket
 from qt_YOLO import MainWindow
 from PyQt5.QtWidgets import QApplication
@@ -20,7 +17,7 @@ import websocket
 import websockets
 import asyncio
 import json
-import Alpha_beta_optimize
+
 #机械臂控制函数
 # from ql_main import ql_main
 
@@ -197,8 +194,8 @@ def detect_endgame(image, self_yolo, go_stones, mod):
     rotated_img = cv2.rotate(res_img, cv2.ROTATE_90_CLOCKWISE)
 
     # 保存旋转后的图像
-    cv2.imwrite("res_img.jpg", rotated_img)
-    # cv2.imwrite("res_img.jpg", res_img)
+    cv2.imwrite("images/res_img.jpg", rotated_img)
+    # cv2.imwrite("images/res_img.jpg", res_img)
 
     img_shape = res_img.shape
 
